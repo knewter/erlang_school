@@ -1,4 +1,4 @@
--module(db).
+-module(db2).
 -export([new/0, write/3, read/2, match/2, delete/2]).
 
 -include_lib("eunit/include/eunit.hrl").
@@ -9,31 +9,33 @@ new() ->
 write(Key, Value, State) ->
     [{Key,Value}] ++ State.
 
-read(Key, [{Key, Value}|_]) ->
-    {ok, Value};
-read(Key, [_|T]) ->
-    read(Key, T);
-read(_, []) ->
-    {error,instance}.
+read(Key, State) ->
+    case lists:keyfind(Key, 1, State) of
+        {Key, Value} -> {ok, Value};
+        false -> {error, instance}
+    end.
 
-match(Value, [{Key, Value}|T]) ->
-    match(Value, T, [Key]);
-match(Value, [_|T]) ->
-    match(Value, T);
-match(_, []) ->
-    [].
-match(Value, TestList, ExistingResponse) ->
-    ExistingResponse ++ match(Value, TestList).
+match(SearchTerm, State) ->
+    lists:filtermap(
+        fun({Key, Value}) ->
+            case SearchTerm == Value of
+                true -> {true, Key};
+                false -> false
+            end
+        end,
+        State
+     ).
 
-delete(Key, State) ->
-    delete(Key, State, []).
-delete(_, [], ResponseState) ->
-    ResponseState;
-delete(Key, [{Key, _}|T], ResponseState) ->
-    delete(Key, T, ResponseState);
-delete(Key, [{NoMatchKey, NoMatchValue}|T], ResponseState) ->
-    NewResponseState = ResponseState ++ [{NoMatchKey, NoMatchValue}],
-    delete(Key, T, NewResponseState).
+delete(DeleteKey, State) ->
+    lists:filtermap(
+        fun({Key, Value}) ->
+            case DeleteKey == Key of
+                true -> false;
+                false -> {true, {Key, Value}}
+            end
+        end,
+        State
+     ).
 
 %%%% Tests %%%%
 
